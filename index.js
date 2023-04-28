@@ -144,7 +144,7 @@ async function main() {
 async function create(vm) {
   if (vm.env.logLevel >= 200) console.log(`Starting 'create' method...`);
   
-  var converter = new showdown.Converter();
+  var converter = new showdown.Converter({tables: 'true'});
   var html = converter.makeHtml(vm.body);
   
   converter = null;
@@ -270,7 +270,7 @@ async function update(vm, workItem) {
   if (vm.env.logLevel >= 200) console.log(`Starting 'update' method...`);
 
   var body = vm.body.replace(`AB#${workItem.id}`, '').trim();
-  var converter = new showdown.Converter();
+  var converter = new showdown.Converter({tables: 'true'});
   var html = converter.makeHtml(body);  
   converter = null;
   let patchDocument = [];
@@ -301,6 +301,21 @@ async function update(vm, workItem) {
     );
   }
 
+  var commentEdited = false;
+  if (vm.comment_text != "") {
+    var comment_converter = new showdown.Converter();
+    var comment_html = comment_converter.makeHtml(vm.comment_text);  
+    comment_converter = null;
+
+    patchDocument.push({
+      op: "add",
+      path: "/fields/System.History",
+      value: `<a href="${vm.comment_url}" target="_new">GitHub issue and comment edited</a> by ${vm.user}</br></br>${comment_html}`,
+    });
+    commentEdited = true;
+  }
+  
+
   // verbose logging
   if (vm.env.logLevel >= 300) {
     console.log("Print full patch object:");
@@ -308,11 +323,13 @@ async function update(vm, workItem) {
   }
 
   if (patchDocument.length > 0) {
-    patchDocument.push({
-      op: "add",
-      path: "/fields/System.History",
-      value: "GitHub issue updated by " + vm.user,
-    });
+    if (!commentEdited){
+      patchDocument.push({
+        op: "add",
+        path: "/fields/System.History",
+        value: "GitHub issue updated by " + vm.user,
+      });
+    }
 
     return await updateWorkItem(patchDocument, workItem.id, vm.env);
   } else {
@@ -324,7 +341,7 @@ async function update(vm, workItem) {
 async function comment(vm, workItem) {
   if (vm.env.logLevel >= 200) console.log(`Starting 'comment' method...`);
 
-  var converter = new showdown.Converter();
+  var converter = new showdown.Converter({tables: 'true'});
   var html = converter.makeHtml(vm.comment_text);
   
   converter = null;
